@@ -1,0 +1,2436 @@
+# 🐳 Docker — DevOps Quick Reference
+
+![Docker](https://img.shields.io/badge/Docker-Practical_Reference-2496ED?logo=docker&logoColor=white)
+![Level](https://img.shields.io/badge/Level-DevOps-success)
+![Focus](https://img.shields.io/badge/Focus-Commands_%26_Troubleshooting-orange)
+
+> 📘 **Purpose:** One place for Docker commands, checks, troubleshooting, Dockerfile reference, networking, storage, resources, health checks, and registry operations.
+
+---
+
+# 🧠 1. Docker in 30 Seconds
+
+```text
+SOURCE CODE
+     │
+     ▼
+ Dockerfile
+     │
+     │ docker build
+     ▼
+   IMAGE
+     │
+     │ docker run
+     ▼
+ CONTAINER
+     │
+     ▼
+ APPLICATION
+```
+
+| Component | Remember |
+|---|---|
+| 📝 Dockerfile | Instructions to build image |
+| 📦 Image | Packaged application/template |
+| 🐳 Container | Running instance of image |
+| ☁️ Registry | Remote image storage |
+| 🌐 Network | Container communication |
+| 💾 Volume | Persistent data |
+
+### ⭐ Core Flow
+
+```bash
+docker build -t myapp:v1 .
+docker run -d --name app01 -p 9090:8080 myapp:v1
+docker ps
+docker logs app01
+```
+
+---
+
+# 🟢 2. Containers — Create / Run / Manage
+
+## Run
+
+```bash
+docker run -d --name app01 nginx
+```
+
+## Run with port
+
+```bash
+docker run -d \
+  --name app01 \
+  -p 8080:80 \
+  nginx
+```
+
+## Run and automatically remove after exit
+
+```bash
+docker run --rm nginx
+```
+
+## Run interactively
+
+```bash
+docker run -it ubuntu bash
+```
+
+## List running
+
+```bash
+docker ps
+```
+
+## List all
+
+```bash
+docker ps -a
+```
+
+## Start / Stop / Restart
+
+```bash
+docker start app01
+docker stop app01
+docker restart app01
+```
+
+## Remove container
+
+```bash
+docker rm app01
+```
+
+## Force remove
+
+```bash
+docker rm -f app01
+```
+
+> ⚠️ **Production:** Never remove/restart a container before checking what it is and what depends on it.
+
+---
+
+# 🔵 3. Daily Checking Commands
+
+These are the commands to remember first.
+
+```bash
+# Running containers
+docker ps
+
+# All containers
+docker ps -a
+
+# Images
+docker images
+
+# Logs
+docker logs --tail 100 app01
+
+# CPU / RAM
+docker stats app01 --no-stream
+
+# Processes
+docker top app01
+
+# Full configuration
+docker inspect app01
+
+# Enter container
+docker exec -it app01 sh
+
+# Networks
+docker network ls
+
+# Volumes
+docker volume ls
+
+# Docker disk usage
+docker system df
+```
+
+### 🧠 Daily Mental Flow
+
+```text
+ps
+ ↓
+logs
+ ↓
+inspect
+ ↓
+stats
+ ↓
+top
+ ↓
+exec
+```
+
+---
+
+# 📜 4. Logs
+
+## Full logs
+
+```bash
+docker logs app01
+```
+
+## Last 100 lines
+
+```bash
+docker logs --tail 100 app01
+```
+
+## Follow live
+
+```bash
+docker logs -f app01
+```
+
+## Logs with timestamps
+
+```bash
+docker logs -t app01
+```
+
+## Last 10 minutes
+
+```bash
+docker logs --since 10m app01
+```
+
+---
+
+# 🖥️ 5. Execute Inside Container
+
+## Shell
+
+```bash
+docker exec -it app01 sh
+```
+
+If Bash exists:
+
+```bash
+docker exec -it app01 bash
+```
+
+## Run individual commands
+
+```bash
+docker exec app01 whoami
+docker exec app01 pwd
+docker exec app01 ls -lah
+docker exec app01 ps
+```
+
+### ⚠️ Remember
+
+```text
+HOST
+ │
+ │ docker exec
+ ▼
+CONTAINER
+```
+
+The host and container are different environments.
+
+---
+
+# ⚙️ 6. Container Process / PID 1
+
+A container normally stays running while its **main process (PID 1)** stays running.
+
+```text
+PID 1 RUNNING
+      ↓
+CONTAINER RUNNING
+
+
+PID 1 EXITS
+      ↓
+CONTAINER STOPS
+```
+
+Check processes:
+
+```bash
+docker top app01
+```
+
+Inspect PID:
+
+```bash
+docker inspect -f '{{.State.Pid}}' app01
+```
+
+---
+
+# 🔌 7. Ports
+
+## Format
+
+```text
+-p HOST_PORT:CONTAINER_PORT
+```
+
+Example:
+
+```bash
+docker run -d \
+  --name app01 \
+  -p 9090:8080 \
+  myapp:v1
+```
+
+Flow:
+
+```text
+Browser
+   │
+   ▼
+SERVER :9090
+   │
+   ▼
+CONTAINER :8080
+   │
+   ▼
+Application
+```
+
+Test:
+
+```bash
+curl -i http://localhost:9090
+```
+
+Check published ports:
+
+```bash
+docker ps
+```
+
+or:
+
+```bash
+docker port app01
+```
+
+### ⭐ EXPOSE vs `-p`
+
+Dockerfile:
+
+```dockerfile
+EXPOSE 8080
+```
+
+Runtime:
+
+```bash
+docker run -p 9090:8080 myapp:v1
+```
+
+| Setting | Purpose |
+|---|---|
+| `EXPOSE 8080` | Documents container port |
+| `-p 9090:8080` | Actually publishes port |
+
+> 🧠 **EXPOSE does not publish a port.**
+
+---
+
+# 🌐 8. Docker Networking
+
+## List networks
+
+```bash
+docker network ls
+```
+
+## Create network
+
+```bash
+docker network create app-network
+```
+
+## Run container on network
+
+```bash
+docker run -d \
+  --name frontend \
+  --network app-network \
+  nginx
+```
+
+## Connect existing container
+
+```bash
+docker network connect app-network app01
+```
+
+## Disconnect
+
+```bash
+docker network disconnect app-network app01
+```
+
+## Inspect network
+
+```bash
+docker network inspect app-network
+```
+
+## Remove network
+
+```bash
+docker network rm app-network
+```
+
+---
+
+## 🧠 Docker DNS
+
+Containers on a **user-defined network** can communicate using container names.
+
+```text
+frontend
+    │
+    │ Docker DNS
+    ▼
+backend
+```
+
+Example:
+
+```text
+http://backend:8080
+```
+
+instead of:
+
+```text
+http://172.x.x.x:8080
+```
+
+> ⭐ **User-defined network = container-name DNS.**
+
+---
+
+## Network Modes
+
+### Bridge
+
+```bash
+docker run --network bridge nginx
+```
+
+### Host
+
+```bash
+docker run --network host nginx
+```
+
+### None
+
+```bash
+docker run --network none nginx
+```
+
+### Internal network
+
+```bash
+docker network create --internal backend-network
+```
+
+---
+
+# 💾 9. Docker Storage
+
+Three important types:
+
+```text
+1. Named Volume
+2. Bind Mount
+3. Anonymous Volume
+```
+
+---
+
+## 🟢 Named Volume
+
+Create:
+
+```bash
+docker volume create app-data
+```
+
+Use:
+
+```bash
+docker run -d \
+  --name app01 \
+  -v app-data:/data \
+  myapp:v1
+```
+
+Format:
+
+```text
+VOLUME_NAME:CONTAINER_PATH
+
+app-data:/data
+```
+
+Docker manages the host-side location.
+
+### Check
+
+```bash
+docker volume ls
+docker volume inspect app-data
+```
+
+---
+
+## 🔵 Bind Mount
+
+```bash
+docker run -d \
+  --name app01 \
+  -v /home/ubuntu/app-data:/data \
+  myapp:v1
+```
+
+Format:
+
+```text
+HOST_PATH:CONTAINER_PATH
+```
+
+Example:
+
+```text
+/home/ubuntu/app-data:/data
+```
+
+Read-only:
+
+```bash
+docker run -d \
+  -v /home/ubuntu/config:/config:ro \
+  myapp:v1
+```
+
+---
+
+## 🟡 Anonymous Volume
+
+```bash
+docker run -d \
+  -v /data \
+  myapp:v1
+```
+
+Docker generates the volume name.
+
+---
+
+## ⭐ Storage Memory Trick
+
+| Type | Example | Managed By |
+|---|---|---|
+| Named Volume | `app-data:/data` | Docker |
+| Bind Mount | `/opt/data:/data` | Us |
+| Anonymous | `/data` | Docker-generated |
+
+```text
+Named Volume
+app-data:/data
+
+Bind Mount
+/host/path:/container/path
+```
+
+---
+
+# 📊 10. CPU & Memory
+
+## Memory limit
+
+```bash
+docker run -d \
+  --name app01 \
+  --memory=256m \
+  myapp:v1
+```
+
+## CPU limit
+
+```bash
+docker run -d \
+  --name app01 \
+  --cpus="0.5" \
+  myapp:v1
+```
+
+## Both
+
+```bash
+docker run -d \
+  --name app01 \
+  --memory=256m \
+  --cpus="0.5" \
+  myapp:v1
+```
+
+## Monitor
+
+```bash
+docker stats
+```
+
+One-time output:
+
+```bash
+docker stats app01 --no-stream
+```
+
+---
+
+# 💥 11. OOMKilled
+
+Check:
+
+```bash
+docker inspect -f '{{.State.OOMKilled}}' app01
+```
+
+If:
+
+```text
+true
+```
+
+the container experienced an out-of-memory kill.
+
+Troubleshooting:
+
+```text
+Container stopped
+       ↓
+Check OOMKilled
+       ↓
+Check memory limit
+       ↓
+Check actual usage
+       ↓
+Find why memory increased
+```
+
+Commands:
+
+```bash
+docker inspect -f '{{.State.OOMKilled}}' app01
+docker stats app01 --no-stream
+```
+
+---
+
+# 🔄 12. Restart Policy
+
+Run:
+
+```bash
+docker run -d \
+  --name app01 \
+  --restart unless-stopped \
+  myapp:v1
+```
+
+Policies:
+
+| Policy | Meaning |
+|---|---|
+| `no` | Don't automatically restart |
+| `always` | Always restart |
+| `unless-stopped` | Restart unless manually stopped |
+| `on-failure` | Restart after failure |
+
+Check:
+
+```bash
+docker inspect \
+  -f '{{.HostConfig.RestartPolicy.Name}}' \
+  app01
+```
+
+---
+
+# ❤️ 13. Healthcheck
+
+Dockerfile example:
+
+```dockerfile
+HEALTHCHECK \
+  --interval=10s \
+  --timeout=3s \
+  --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+```
+
+Meaning:
+
+```text
+Check every 10 sec
+       ↓
+Timeout after 3 sec
+       ↓
+3 consecutive failures
+       ↓
+UNHEALTHY
+```
+
+Check:
+
+```bash
+docker ps
+```
+
+Detailed:
+
+```bash
+docker inspect \
+  -f '{{json .State.Health}}' \
+  app01
+```
+
+Possible states:
+
+```text
+starting
+healthy
+unhealthy
+```
+
+### ⭐ Important
+
+```text
+UP ≠ HEALTHY
+```
+
+Example:
+
+```text
+Up 10 minutes (unhealthy)
+```
+
+means:
+
+```text
+Main process → running
+Healthcheck  → failing
+```
+
+> ⚠️ A bad healthcheck can mark a working application as unhealthy.
+
+> ⚠️ Standalone Docker does not automatically restart a container merely because its health status becomes `unhealthy`.
+
+---
+
+# 🔍 14. Docker Inspect — Master Reference ⭐
+
+This section is useful during real troubleshooting.
+
+## Full details
+
+```bash
+docker inspect app01
+```
+
+---
+
+## 🟢 Status
+
+```bash
+docker inspect \
+  -f '{{.State.Status}}' \
+  app01
+```
+
+---
+
+## 🔢 PID
+
+```bash
+docker inspect \
+  -f '{{.State.Pid}}' \
+  app01
+```
+
+---
+
+## 💥 OOMKilled
+
+```bash
+docker inspect \
+  -f '{{.State.OOMKilled}}' \
+  app01
+```
+
+---
+
+## 🚪 Exit Code
+
+```bash
+docker inspect \
+  -f '{{.State.ExitCode}}' \
+  app01
+```
+
+---
+
+## ❤️ Health
+
+```bash
+docker inspect \
+  -f '{{json .State.Health}}' \
+  app01
+```
+
+---
+
+## 📦 Image
+
+```bash
+docker inspect \
+  -f '{{.Config.Image}}' \
+  app01
+```
+
+---
+
+## ⚙️ CMD
+
+```bash
+docker inspect \
+  -f '{{json .Config.Cmd}}' \
+  app01
+```
+
+---
+
+## ⚙️ ENTRYPOINT
+
+```bash
+docker inspect \
+  -f '{{json .Config.Entrypoint}}' \
+  app01
+```
+
+---
+
+## 👤 User
+
+```bash
+docker inspect \
+  -f '{{.Config.User}}' \
+  app01
+```
+
+---
+
+## 🌱 Environment Variables
+
+```bash
+docker inspect \
+  -f '{{json .Config.Env}}' \
+  app01
+```
+
+Readable format:
+
+```bash
+docker inspect \
+  -f '{{range .Config.Env}}{{println .}}{{end}}' \
+  app01
+```
+
+> ⚠️ Be careful sharing ENV output—it may contain secrets.
+
+---
+
+## 🌐 Networks
+
+```bash
+docker inspect \
+  -f '{{json .NetworkSettings.Networks}}' \
+  app01
+```
+
+---
+
+## 🌐 IP Address
+
+```bash
+docker inspect \
+  -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+  app01
+```
+
+---
+
+## 🔌 Published Ports
+
+```bash
+docker inspect \
+  -f '{{json .NetworkSettings.Ports}}' \
+  app01
+```
+
+---
+
+## 💾 Mounts
+
+```bash
+docker inspect \
+  -f '{{json .Mounts}}' \
+  app01
+```
+
+Readable:
+
+```bash
+docker inspect \
+  -f '{{range .Mounts}}{{println .Type .Source "->" .Destination}}{{end}}' \
+  app01
+```
+
+---
+
+## 🔄 Restart Policy
+
+```bash
+docker inspect \
+  -f '{{.HostConfig.RestartPolicy.Name}}' \
+  app01
+```
+
+---
+
+## 📊 Memory Limit
+
+```bash
+docker inspect \
+  -f '{{.HostConfig.Memory}}' \
+  app01
+```
+
+---
+
+## 📊 CPU Setting
+
+```bash
+docker inspect \
+  -f '{{.HostConfig.NanoCpus}}' \
+  app01
+```
+
+---
+
+## 🕐 Started Time
+
+```bash
+docker inspect \
+  -f '{{.State.StartedAt}}' \
+  app01
+```
+
+---
+
+## 🛑 Finished Time
+
+```bash
+docker inspect \
+  -f '{{.State.FinishedAt}}' \
+  app01
+```
+
+---
+
+# 📦 15. Images
+
+## List
+
+```bash
+docker images
+```
+
+or:
+
+```bash
+docker image ls
+```
+
+## Pull
+
+```bash
+docker pull nginx
+docker pull nginx:1.27
+```
+
+## Inspect
+
+```bash
+docker inspect nginx:1.27
+```
+
+## History
+
+```bash
+docker history myapp:v1
+```
+
+## Remove
+
+```bash
+docker rmi myapp:v1
+```
+
+---
+
+# 🏷️ 16. Image Tags
+
+Format:
+
+```text
+IMAGE:TAG
+```
+
+Examples:
+
+```text
+myapp:v1
+myapp:v2
+myapp:2026-09-15
+```
+
+Build:
+
+```bash
+docker build -t myapp:v1 .
+```
+
+Tag existing image:
+
+```bash
+docker tag myapp:v1 username/myapp:v1
+```
+
+> ⭐ Use explicit versions so deployments and rollbacks are easier to understand.
+
+---
+
+# 🐳 17. Dockerfile — Complete Quick Reference
+
+Example:
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN useradd -m -s /bin/bash appuser
+
+COPY app.py .
+
+ARG APP_VERSION=1.0
+
+ENV APP_ENV=production
+
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
+
+CMD ["python", "app.py"]
+```
+
+Build:
+
+```bash
+docker build -t myapp:v1 .
+```
+
+Run:
+
+```bash
+docker run -d \
+  --name app01 \
+  -p 9090:8080 \
+  myapp:v1
+```
+
+---
+
+# 🧱 18. Dockerfile Instructions
+
+| Instruction | Remember |
+|---|---|
+| `FROM` | Base image |
+| `WORKDIR` | Working directory |
+| `COPY` | Copy files into image |
+| `ADD` | Copy + special features |
+| `RUN` | Execute during build |
+| `ARG` | Build-time variable |
+| `ENV` | Runtime/default variable |
+| `USER` | Runtime user |
+| `EXPOSE` | Container port metadata |
+| `HEALTHCHECK` | Application health test |
+| `CMD` | Default runtime command |
+| `ENTRYPOINT` | Main executable |
+
+---
+
+# 🔨 19. Build Time vs Run Time ⭐
+
+```text
+┌────────────────┬────────────────┐
+│   BUILD TIME   │    RUN TIME    │
+├────────────────┼────────────────┤
+│ ARG            │ ENV            │
+│ RUN            │ CMD            │
+└────────────────┴────────────────┘
+```
+
+### RUN
+
+```dockerfile
+RUN apt-get update
+```
+
+Runs during:
+
+```bash
+docker build
+```
+
+### CMD
+
+```dockerfile
+CMD ["python", "app.py"]
+```
+
+Runs when:
+
+```bash
+docker run
+```
+
+### ⭐ Remember
+
+```text
+RUN → builds image
+CMD → runs application
+
+ARG → build-time value
+ENV → runtime/default value
+```
+
+---
+
+# 🌱 20. ARG vs ENV
+
+## ARG — Build Time
+
+Dockerfile:
+
+```dockerfile
+ARG APP_VERSION=1.0
+```
+
+Override:
+
+```bash
+docker build \
+  --build-arg APP_VERSION=2.0 \
+  -t myapp:v2 .
+```
+
+---
+
+## ENV — Runtime
+
+Dockerfile:
+
+```dockerfile
+ENV APP_ENV=development
+```
+
+Override:
+
+```bash
+docker run -d \
+  -e APP_ENV=staging \
+  myapp:v1
+```
+
+### 🧠 Memory
+
+```text
+BUILD                RUN
+─────                ───
+
+ARG                  ENV
+RUN                  CMD
+```
+
+> 🔐 Don't use Dockerfile `ARG` or `ENV` as a casual way to bake secrets into images.
+
+---
+
+# 👤 21. USER / Permissions
+
+Dockerfile:
+
+```dockerfile
+RUN useradd -m -s /bin/bash appuser
+
+COPY . /app
+
+RUN chown -R appuser:appuser /app
+
+USER appuser
+```
+
+Check:
+
+```bash
+docker exec app01 whoami
+```
+
+Correct order:
+
+```text
+CREATE USER
+     ↓
+COPY FILES
+     ↓
+CHOWN
+     ↓
+USER appuser
+     ↓
+RUN APPLICATION
+```
+
+> ⚠️ Don't automatically solve permission problems with `chmod 777`.
+
+---
+
+# 📂 22. WORKDIR / COPY / .dockerignore
+
+## WORKDIR
+
+```dockerfile
+WORKDIR /app
+```
+
+Think:
+
+```text
+WORKDIR ≈ cd
+```
+
+Then:
+
+```dockerfile
+COPY app.py .
+```
+
+becomes:
+
+```text
+/app/app.py
+```
+
+---
+
+## COPY
+
+```dockerfile
+COPY app.jar /opt/app/app.jar
+```
+
+`COPY` happens during image build.
+
+It is **not** a live host/container connection.
+
+For live host sharing use a bind mount.
+
+---
+
+## .dockerignore
+
+Example:
+
+```text
+.git
+*.log
+node_modules
+secret.txt
+.env
+```
+
+Purpose:
+
+```text
+Smaller/cleaner build context
++
+avoid unnecessary files entering build
+```
+
+---
+
+# ⚡ 23. Docker Build Cache
+
+Normal build:
+
+```bash
+docker build -t myapp:v1 .
+```
+
+You may see:
+
+```text
+CACHED
+```
+
+Force rebuild without cache:
+
+```bash
+docker build --no-cache -t myapp:v1 .
+```
+
+Inspect layers/history:
+
+```bash
+docker history myapp:v1
+```
+
+### Good ordering
+
+```text
+Changes rarely
+     ↓
+put earlier
+
+Changes often
+     ↓
+put later
+```
+
+---
+
+# 🪶 24. Image Optimization
+
+Main rules:
+
+```text
+✅ Appropriate base image
+✅ Only required packages
+✅ .dockerignore
+✅ Remove package cache
+✅ Good layer ordering
+✅ Non-root runtime
+✅ Multi-stage builds
+```
+
+Example:
+
+```dockerfile
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+```
+
+Goal:
+
+```text
+Smaller image
+     +
+Faster pull
+     +
+Cleaner runtime
+```
+
+---
+
+# 🏗️ 25. Multi-Stage Build ⭐
+
+Mental model:
+
+```text
+BUILD BIG
+    │
+    ▼
+ ARTIFACT
+    │
+    ▼
+RUN SMALL
+```
+
+Example:
+
+```dockerfile
+# Stage 1 — BUILD
+
+FROM node:22 AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+
+# Stage 2 — RUNTIME
+
+FROM nginx:latest
+
+COPY --from=builder \
+  /app/dist \
+  /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+Most important line:
+
+```dockerfile
+COPY --from=builder /app/dist /usr/share/nginx/html
+```
+
+Flow:
+
+```text
+NODE + NPM + SOURCE
+        ↓
+      BUILD
+        ↓
+      dist/
+        ↓
+COPY ONLY OUTPUT
+        ↓
+NGINX + dist/
+```
+
+> ⭐ **Multi-stage = BUILD big → RUN small.**
+
+---
+
+# ☕ 26. Java Multi-Stage Example
+
+```dockerfile
+# BUILD
+
+FROM maven:3.9-eclipse-temurin-21 AS builder
+
+WORKDIR /app
+
+COPY . .
+
+RUN mvn clean package -DskipTests
+
+
+# RUNTIME
+
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+COPY --from=builder \
+  /app/target/app.jar \
+  app.jar
+
+EXPOSE 8080
+
+CMD ["java", "-jar", "app.jar"]
+```
+
+```text
+Maven + Source
+      ↓
+   app.jar
+      ↓
+JRE + app.jar
+```
+
+Maven/build tools do not need to be in the final runtime image.
+
+---
+
+# ➕ 27. ADD vs COPY
+
+Normally:
+
+```dockerfile
+COPY app.jar /app/app.jar
+```
+
+Simple rule:
+
+```text
+Normal copying
+     ↓
+    COPY
+
+Specific ADD feature required
+     ↓
+     ADD
+```
+
+Prefer `COPY` for normal local file copying.
+
+---
+
+# ☁️ 28. Docker Hub / Registry
+
+Full flow:
+
+```text
+Dockerfile
+    ↓
+BUILD
+    ↓
+Local Image
+    ↓
+TAG
+    ↓
+PUSH
+    ↓
+Registry
+    ↓
+PULL
+    ↓
+Another Server
+    ↓
+RUN
+```
+
+## Login
+
+```bash
+docker login
+```
+
+## Tag
+
+```bash
+docker tag \
+  myapp:v1 \
+  username/myapp:v1
+```
+
+## Push
+
+```bash
+docker push username/myapp:v1
+```
+
+## Pull
+
+```bash
+docker pull username/myapp:v1
+```
+
+## Run pulled image
+
+```bash
+docker run -d \
+  --name app01 \
+  -p 9090:8080 \
+  username/myapp:v1
+```
+
+> 🔐 Never commit Docker passwords/tokens to GitHub.
+
+---
+
+# 🚀 29. CI/CD Docker Flow
+
+```text
+Developer
+    ↓
+Git
+    ↓
+Jenkins
+    ↓
+docker build
+    ↓
+docker tag
+    ↓
+docker push
+    ↓
+Registry
+    ↓
+Deployment
+    ↓
+Docker / Swarm / Kubernetes
+```
+
+---
+
+# 💽 30. Docker Disk Usage
+
+## Summary
+
+```bash
+docker system df
+```
+
+## Detailed
+
+```bash
+docker system df -v
+```
+
+## Docker directory size — Linux
+
+```bash
+sudo du -sh /var/lib/docker
+```
+
+> ⚠️ **RECLAIMABLE does not automatically mean safe to delete.**
+
+Always identify what exists before cleanup.
+
+---
+
+# 🧹 31. Docker Cleanup
+
+## 🟢 Inspect first
+
+```bash
+docker ps -a
+docker images
+docker volume ls
+docker network ls
+docker system df -v
+```
+
+---
+
+## Remove one stopped container
+
+```bash
+docker rm app01
+```
+
+## Remove one image
+
+```bash
+docker rmi myapp:v1
+```
+
+## Remove one volume
+
+```bash
+docker volume rm app-data
+```
+
+## Remove one network
+
+```bash
+docker network rm app-network
+```
+
+---
+
+## ⚠️ Prune Commands
+
+Stopped containers:
+
+```bash
+docker container prune
+```
+
+Unused images:
+
+```bash
+docker image prune
+```
+
+All unused images:
+
+```bash
+docker image prune -a
+```
+
+Unused networks:
+
+```bash
+docker network prune
+```
+
+Unused volumes:
+
+```bash
+docker volume prune
+```
+
+Build cache:
+
+```bash
+docker builder prune
+```
+
+All build cache:
+
+```bash
+docker builder prune -a
+```
+
+General unused Docker data:
+
+```bash
+docker system prune
+```
+
+More aggressive:
+
+```bash
+docker system prune -a
+```
+
+> 🔴 **Production rule:** Never blindly run prune commands. Inspect first.
+
+---
+
+# 🚨 32. Troubleshooting — Start Here ⭐
+
+When someone says:
+
+> **Application is not working.**
+
+Don't immediately restart it.
+
+Start:
+
+```bash
+docker ps -a
+```
+
+Then:
+
+```bash
+docker logs --tail 100 app01
+```
+
+Then:
+
+```bash
+docker inspect app01
+```
+
+Then:
+
+```bash
+docker stats app01 --no-stream
+```
+
+Then:
+
+```bash
+docker top app01
+```
+
+If required:
+
+```bash
+docker exec -it app01 sh
+```
+
+Test application:
+
+```bash
+curl -i http://localhost:9090
+```
+
+### ⭐ Troubleshooting Flow
+
+```text
+SCENARIO
+   ↓
+HYPOTHESIS
+   ↓
+READ-ONLY CHECK
+   ↓
+ROOT CAUSE
+   ↓
+FIX
+   ↓
+VALIDATE
+```
+
+---
+
+# 🚦 33. Symptom → What to Check
+
+| Problem | First Checks |
+|---|---|
+| 🔴 Container exited | `ps -a` → logs → ExitCode |
+| 🔄 Restarting | logs → CMD → app crash |
+| 💥 OOMKilled | OOM → stats → memory limit |
+| ❤️ Unhealthy | healthcheck → endpoint |
+| 🌐 Website unavailable | ports → logs → listener |
+| 🔌 Port conflict | `docker ps` / `docker port` |
+| 🌍 Container communication | network → DNS |
+| 💾 Data missing | mounts → volumes |
+| 👤 Permission denied | USER → ownership |
+| 🌱 Wrong config | ENV |
+| 📦 Wrong version | image/tag |
+| ⚙️ App exits immediately | CMD / ENTRYPOINT |
+| 💽 Disk full | `docker system df -v` |
+
+---
+
+# 🔴 34. Container Exited
+
+Check:
+
+```bash
+docker ps -a
+```
+
+Logs:
+
+```bash
+docker logs --tail 100 app01
+```
+
+Exit code:
+
+```bash
+docker inspect \
+  -f '{{.State.ExitCode}}' \
+  app01
+```
+
+OOM:
+
+```bash
+docker inspect \
+  -f '{{.State.OOMKilled}}' \
+  app01
+```
+
+Command:
+
+```bash
+docker inspect \
+  -f '{{json .Config.Cmd}}' \
+  app01
+```
+
+---
+
+# 🌐 35. Website Not Opening
+
+Check container:
+
+```bash
+docker ps
+```
+
+Check port:
+
+```bash
+docker port app01
+```
+
+Logs:
+
+```bash
+docker logs --tail 100 app01
+```
+
+Test from host:
+
+```bash
+curl -i http://localhost:9090
+```
+
+Check port configuration:
+
+```bash
+docker inspect \
+  -f '{{json .NetworkSettings.Ports}}' \
+  app01
+```
+
+Remember:
+
+```text
+-p 9090:8080
+```
+
+means:
+
+```text
+HOST 9090
+   ↓
+CONTAINER 8080
+```
+
+It does **not** guarantee the application is actually listening on `8080`.
+
+---
+
+# 🌍 36. Network / DNS Problem
+
+List:
+
+```bash
+docker network ls
+```
+
+Inspect:
+
+```bash
+docker network inspect app-network
+```
+
+Check container networks:
+
+```bash
+docker inspect \
+  -f '{{json .NetworkSettings.Networks}}' \
+  app01
+```
+
+From another container on the same user-defined network, use:
+
+```text
+app01:8080
+```
+
+rather than depending on a container IP.
+
+---
+
+# 👤 37. Permission Problem
+
+Check runtime user:
+
+```bash
+docker exec app01 whoami
+```
+
+Check directory:
+
+```bash
+docker exec app01 ls -ld /app
+```
+
+Inspect configured user:
+
+```bash
+docker inspect \
+  -f '{{.Config.User}}' \
+  app01
+```
+
+Possible Dockerfile pattern:
+
+```dockerfile
+RUN chown -R appuser:appuser /app
+USER appuser
+```
+
+---
+
+# 💾 38. Data / Mount Problem
+
+Check mounts:
+
+```bash
+docker inspect \
+  -f '{{json .Mounts}}' \
+  app01
+```
+
+Volumes:
+
+```bash
+docker volume ls
+```
+
+Inspect volume:
+
+```bash
+docker volume inspect app-data
+```
+
+Remember:
+
+```text
+Container filesystem
+      ↓ removed container
+Data may disappear
+
+
+Volume
+      ↓ removed container
+Data can persist
+```
+
+---
+
+# ❤️ 39. Health Problem
+
+Check:
+
+```bash
+docker ps
+```
+
+Detailed:
+
+```bash
+docker inspect \
+  -f '{{json .State.Health}}' \
+  app01
+```
+
+Then verify the same endpoint manually where appropriate:
+
+```bash
+curl -i http://localhost:9090/health
+```
+
+Remember:
+
+```text
+Container running
+      ≠
+Application healthy
+```
+
+---
+
+# 🧰 40. MASTER COMMAND SHEET ⭐
+
+## 🐳 Containers
+
+```bash
+docker ps
+docker ps -a
+
+docker run -d --name app01 image:v1
+
+docker start app01
+docker stop app01
+docker restart app01
+
+docker rm app01
+```
+
+## 📦 Images
+
+```bash
+docker images
+docker pull image:v1
+docker inspect image:v1
+docker history image:v1
+docker rmi image:v1
+```
+
+## 📜 Logs
+
+```bash
+docker logs app01
+docker logs --tail 100 app01
+docker logs -f app01
+docker logs --since 10m app01
+```
+
+## 🖥️ Container Access
+
+```bash
+docker exec -it app01 sh
+docker exec app01 whoami
+docker top app01
+```
+
+## 🔍 Inspect
+
+```bash
+docker inspect app01
+
+docker inspect -f '{{.State.Status}}' app01
+docker inspect -f '{{.State.ExitCode}}' app01
+docker inspect -f '{{.State.OOMKilled}}' app01
+docker inspect -f '{{json .State.Health}}' app01
+
+docker inspect -f '{{.Config.Image}}' app01
+docker inspect -f '{{json .Config.Cmd}}' app01
+docker inspect -f '{{json .Config.Entrypoint}}' app01
+docker inspect -f '{{.Config.User}}' app01
+docker inspect -f '{{json .Config.Env}}' app01
+
+docker inspect -f '{{json .NetworkSettings.Networks}}' app01
+docker inspect -f '{{json .NetworkSettings.Ports}}' app01
+
+docker inspect -f '{{json .Mounts}}' app01
+
+docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' app01
+docker inspect -f '{{.HostConfig.Memory}}' app01
+```
+
+## 📊 Resources
+
+```bash
+docker stats
+docker stats app01 --no-stream
+docker top app01
+```
+
+## 🌐 Networks
+
+```bash
+docker network ls
+docker network create app-network
+docker network inspect app-network
+docker network connect app-network app01
+docker network disconnect app-network app01
+docker network rm app-network
+```
+
+## 💾 Volumes
+
+```bash
+docker volume ls
+docker volume create app-data
+docker volume inspect app-data
+docker volume rm app-data
+```
+
+## 💽 Disk
+
+```bash
+docker system df
+docker system df -v
+```
+
+## 🏗️ Build
+
+```bash
+docker build -t myapp:v1 .
+
+docker build \
+  --build-arg APP_VERSION=2.0 \
+  -t myapp:v2 .
+
+docker build --no-cache -t myapp:v1 .
+```
+
+## 🔌 Ports
+
+```bash
+docker run -d \
+  --name app01 \
+  -p 9090:8080 \
+  myapp:v1
+```
+
+## 🌱 ENV
+
+```bash
+docker run -d \
+  --name app01 \
+  -e APP_ENV=production \
+  myapp:v1
+```
+
+## 💾 Volume
+
+```bash
+docker run -d \
+  --name app01 \
+  -v app-data:/data \
+  myapp:v1
+```
+
+## 📂 Bind Mount
+
+```bash
+docker run -d \
+  --name app01 \
+  -v /host/data:/data \
+  myapp:v1
+```
+
+## 🌐 Network
+
+```bash
+docker run -d \
+  --name app01 \
+  --network app-network \
+  myapp:v1
+```
+
+## 📊 Resource Limits
+
+```bash
+docker run -d \
+  --name app01 \
+  --memory=512m \
+  --cpus="1.0" \
+  myapp:v1
+```
+
+## 🔄 Restart Policy
+
+```bash
+docker run -d \
+  --name app01 \
+  --restart unless-stopped \
+  myapp:v1
+```
+
+## ☁️ Registry
+
+```bash
+docker login
+
+docker tag myapp:v1 username/myapp:v1
+
+docker push username/myapp:v1
+
+docker pull username/myapp:v1
+```
+
+---
+
+# 🎯 41. 1-Minute Memory Sheet
+
+```text
+╔══════════════════════════════════════════════╗
+║              🐳 DOCKER FLOW                 ║
+╠══════════════════════════════════════════════╣
+║                                              ║
+║  Dockerfile                                  ║
+║      ↓                                       ║
+║  docker build                                ║
+║      ↓                                       ║
+║  IMAGE                                       ║
+║      ↓                                       ║
+║  docker run                                  ║
+║      ↓                                       ║
+║  CONTAINER                                   ║
+║      ↓                                       ║
+║  APPLICATION                                 ║
+║                                              ║
+╚══════════════════════════════════════════════╝
+```
+
+## 🟡 Build vs Runtime
+
+```text
+BUILD TIME              RUN TIME
+──────────              ────────
+
+ARG                     ENV
+RUN                     CMD
+```
+
+## 🔵 Port
+
+```text
+EXPOSE 8080
+     ↓
+Metadata
+
+-p 9090:8080
+     ↓
+HOST 9090 → CONTAINER 8080
+```
+
+## 🟢 Storage
+
+```text
+VOLUME
+app-data:/data
+
+BIND
+/host/data:/data
+```
+
+## 🟣 Network
+
+```text
+User-defined Network
+        ↓
+Container-name DNS
+```
+
+## ❤️ Health
+
+```text
+UP ≠ HEALTHY
+```
+
+## 📊 Resources
+
+```text
+--memory
+--cpus
+   ↓
+docker stats
+```
+
+## 🏗️ Multi-stage
+
+```text
+BUILD BIG
+   ↓
+ARTIFACT
+   ↓
+RUN SMALL
+```
+
+## ☁️ Registry
+
+```text
+BUILD
+  ↓
+TAG
+  ↓
+PUSH
+  ↓
+REGISTRY
+  ↓
+PULL
+  ↓
+RUN
+```
+
+---
+
+# 🛡️ 42. Production Checklist
+
+Before deployment:
+
+```text
+☐ Correct image/tag?
+☐ Correct CMD/ENTRYPOINT?
+☐ Correct container port?
+☐ Correct published/service port?
+☐ Correct environment variables?
+☐ Secrets handled safely?
+☐ Correct Docker network?
+☐ Persistent data required?
+☐ Volume/bind mount correct?
+☐ CPU/memory limits correct?
+☐ Running as non-root where possible?
+☐ Healthcheck valid?
+☐ Logs available?
+☐ Registry image available?
+☐ Rollback image/tag available?
+```
+
+---
+
+# 🏆 Golden Troubleshooting Rule
+
+When there is a Docker issue:
+
+```text
+CHECK
+  ↓
+UNDERSTAND
+  ↓
+FIX
+  ↓
+VALIDATE
+```
+
+Don't immediately restart or delete something.
+
+Ask:
+
+```text
+1. What is running?
+2. Which image/tag?
+3. Why did it stop?
+4. What do the logs say?
+5. Which process is PID 1?
+6. Which port?
+7. Which network?
+8. Where is the data?
+9. Which environment/config?
+10. Is it healthy?
+11. Is it OOMKilled?
+12. What changed?
+```
+
+---
+
+# 🚀 Learning Path
+
+```text
+🐳 Docker
+    ↓
+🧩 Docker Compose
+    ↓
+🐝 Docker Swarm
+    ↓
+☸️ Kubernetes
+    ↓
+☁️ AWS
+    ↓
+🏗️ Terraform
+```
+
+---
+
+## ⭐ Final Docker Formula
+
+```text
+Dockerfile → Build → Image → Run → Container
+
+Container problem?
+        ↓
+PS → LOGS → INSPECT → STATS → TOP → EXEC
+
+Communication?
+        ↓
+PORTS + NETWORK + DNS
+
+Data?
+        ↓
+VOLUME / BIND MOUNT
+
+Production?
+        ↓
+NON-ROOT + HEALTH + LIMITS + VERSION TAG
+
+Deployment?
+        ↓
+BUILD → TAG → PUSH → PULL → RUN
+```
+
+> 🐳 **Don't memorize every command. Know what you need to check and which Docker command gives you that information.**
